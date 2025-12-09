@@ -3,27 +3,25 @@
 <head>
   <meta charset="utf-8" />
   <title>Robbery Game</title>
-  <!-- Added for mobile responsiveness -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- Game container for responsive scaling -->
   <div id="game-container">
     <div id="hud">Score: <span id="score">0</span> <span id="hidden"></span></div>
     <canvas id="game" width="640" height="360" tabindex="0"></canvas>
-  </div>
-  
-  <!-- On-screen controls for mobile -->
-  <div id="dpad">
-    <button id="dpad-up">▲</button>
-    <button id="dpad-left">◀</button>
-    <button id="dpad-right">▶</button>
-    <button id="dpad-down">▼</button>
+    
+    <div id="dpad">
+      <button id="dpad-up">▲</button>
+      <button id="dpad-left">◀</button>
+      <button id="dpad-right">▶</button>
+      <button id="dpad-down">▼</button>
+    </div>
   </div>
 
-  <script src="script.js"></script>
+  <!-- NOTE: type="module" is required here, and it points to main.js -->
+  <script type="module" src="main.js"></script>
 
 </body>
 </html>
