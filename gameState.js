@@ -5,13 +5,12 @@ const canvas = document.getElementById('game');
 const scoreEl = document.getElementById('score');
 const hiddenEl = document.getElementById('hidden');
 
-// We use a single object 'state' so we can export it and modify it elsewhere
 export const state = {
   score: 0,
   gameOver: false,
   items: [],
-  player: { x: 60, y: 60, size: 32, speed: 2.5, hidden: false, hideUntil: 0, spedUpUntil: 0 },
-  enemy: { x: 520, y: 260, size: 32, speed: 1.8, lastKnown: null }
+  player: { x: 0, y: 0, size: 32, speed: 2.5, hidden: false, hideUntil: 0, spedUpUntil: 0 },
+  enemy: { x: 0, y: 0, size: 32, speed: 1.8, lastKnown: null }
 };
 
 const FRUIT_TYPES = ['fruit_apple', 'fruit_grapes', 'fruit_orange', 'fruit_watermelon'];
@@ -22,9 +21,10 @@ export function spawn(type) {
     spriteName = FRUIT_TYPES[Math.floor(Math.random() * FRUIT_TYPES.length)];
   }
 
+  // Ensure items spawn within the CURRENT visible canvas
   state.items.push({
-    x: Math.random() * (canvas.width - 40) + 20,
-    y: Math.random() * (canvas.height - 40) + 20,
+    x: Math.random() * (canvas.width - 60) + 30,
+    y: Math.random() * (canvas.height - 60) + 30,
     type: type,
     sprite: sprites[spriteName],
     size: 32
@@ -35,16 +35,17 @@ export function reset() {
   state.score = 0;
   state.gameOver = false;
   
-  // Reset Player
-  state.player.x = 60;
-  state.player.y = 60;
+  // CHANGED: Use relative positions (percentages)
+  // Player spawns at 10% width, 10% height
+  state.player.x = canvas.width * 0.1; 
+  state.player.y = canvas.height * 0.2;
   state.player.hidden = false;
   state.player.hideUntil = 0;
   state.player.spedUpUntil = 0;
   
-  // Reset Enemy
-  state.enemy.x = 520;
-  state.enemy.y = 260;
+  // CHANGED: Enemy spawns at 80% width, 50% height
+  state.enemy.x = canvas.width * 0.8;
+  state.enemy.y = canvas.height * 0.5;
   state.enemy.lastKnown = null;
   
   // Reset Items
@@ -58,7 +59,6 @@ export function reset() {
   hiddenEl.textContent = '';
 }
 
-// Helper to update UI text from main loop
 export function updateUI() {
     scoreEl.textContent = state.score;
     if (state.player.hidden) {

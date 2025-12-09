@@ -1,10 +1,11 @@
+/* style.css */
+
 body {
   margin: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   height: 100vh;
-  /* Ensure the background covers the whole screen including "notch" areas */
   background: #111;
   color: #eee;
   font-family: Arial, sans-serif;
@@ -13,8 +14,9 @@ body {
 
 #game-container {
   position: relative;
-  width: 100%;
-  height: 100%;
+  /* CHANGED: Force full width and height */
+  width: 100vw;
+  height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -22,12 +24,10 @@ body {
 
 #game {
   background: #223;
-  border: 4px solid #000;
-  cursor: pointer;
-  aspect-ratio: 16 / 9; 
-  max-width: 100%;
-  max-height: 100%;
-  box-sizing: border-box;
+  /* CHANGED: Remove aspect-ratio and borders to feel more immersive */
+  width: 100%;
+  height: 100%;
+  display: block; /* Removes tiny scrollbar gap */
   image-rendering: pixelated; 
 }
 
@@ -38,37 +38,25 @@ body {
   color: #fff;
   font-weight: 700;
   z-index: 10;
-  font-size: clamp(14px, 3vmin, 20px);
+  font-size: 20px; /* Made font slightly larger */
   text-shadow: 1px 1px 2px black;
+  pointer-events: none; /* Let touches pass through text */
 }
 
-#hint {
-  position: fixed;
-  right: 12px;
-  top: 12px;
-  color: #ffeb99;
-  font-weight: 600;
-}
-
-/* --- D-Pad Styling (Updated) --- */
+/* D-Pad styles remain the same... */
 #dpad {
-  /* 1. FIXED: Stick to the screen glass, ignoring the game container */
   position: fixed; 
-  
-  /* 2. SAFE AREA: Add padding for the phone's gesture bar + extra space */
   bottom: calc(40px + env(safe-area-inset-bottom)); 
   left: calc(30px + env(safe-area-inset-left));
-  
-  width: 140px; /* Made slightly bigger for easier touching */
+  width: 140px; 
   height: 140px;
-  
   display: grid;
   grid-template-areas:
     ". up ."
     "left . right"
     ". down .";
   opacity: 0.6;
-  z-index: 100; /* Ensure it's on top of everything */
+  z-index: 100; 
 }
 
 #dpad button {
@@ -93,7 +81,6 @@ body {
 #dpad-left { grid-area: left; }
 #dpad-right { grid-area: right; }
 
-/* Show on touch devices OR small screens */
 @media (hover: none) and (pointer: coarse), (max-width: 768px) {
   #dpad {
     display: grid;

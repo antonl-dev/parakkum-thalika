@@ -6,10 +6,24 @@ import { render } from './renderer.js';
 
 const canvas = document.getElementById('game');
 
-// Focus canvas on click
+// --- START: Resize Logic ---
+function resizeGame() {
+  // We make the canvas exactly the size of the window
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  
+  // Optional: If the game is just starting, we might want to ensure 
+  // entities are on screen, but the game loop bounds check handles most of it.
+}
+
+// Listen for window resize (and screen rotation)
+window.addEventListener('resize', resizeGame);
+// Call it once immediately to set initial size
+resizeGame();
+// --- END: Resize Logic ---
+
 canvas.addEventListener('click', () => canvas.focus());
 
-// Restart listener
 window.addEventListener('keydown', e => {
   if ((e.key === 'r' || e.key === 'R') && state.gameOver) {
     reset();
@@ -22,7 +36,6 @@ function update() {
   const player = state.player;
   const enemy = state.enemy;
 
-  // --- Buff Timers ---
   if (player.hidden && Date.now() > player.hideUntil) {
     player.hidden = false;
     updateUI();
@@ -35,7 +48,6 @@ function update() {
     player.speed = baseSpeed * 1.6;
   }
 
-  // --- Player Movement ---
   let dx = 0, dy = 0;
   if (keys['arrowup'] || keys['w']) dy -= 1;
   if (keys['arrowdown'] || keys['s']) dy += 1;
@@ -50,11 +62,10 @@ function update() {
     player.y += dy * player.speed;
   }
 
-  // Bounds
+  // UPDATED BOUNDS: Uses current canvas.width/height dynamically
   player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
   player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
 
-  // --- Enemy AI ---
   let targetX, targetY;
   if (player.hidden) {
     if (!enemy.lastKnown) enemy.lastKnown = { x: player.x, y: player.y };
@@ -74,7 +85,6 @@ function update() {
     enemy.y += (ey / dist) * enemy.speed;
   }
 
-  // --- Collision: Enemy ---
   if (!player.hidden) {
     const d = Math.hypot(player.x - enemy.x, player.y - enemy.y);
     if (d < (player.size + enemy.size) * 0.45) {
@@ -82,12 +92,11 @@ function update() {
     }
   }
 
-  // --- Collision: Items ---
   for (let i = state.items.length - 1; i >= 0; i--) {
     const it = state.items[i];
     const d = Math.hypot((player.x + player.size / 2) - it.x, (player.y + player.size / 2) - it.y);
     
-    if (d < 25) {
+    if (d < 35) { // Increased pickup radius slightly for mobile
       if (it.type === 'fruit') {
         state.score += 5;
       } else if (it.sprite === sprites.potion_hide) {
@@ -98,9 +107,8 @@ function update() {
       }
       
       state.items.splice(i, 1);
-      updateUI(); // Refresh score display
+      updateUI(); 
 
-      // Respawn logic
       if (Math.random() < 0.8) spawn('fruit');
       if (Math.random() < 0.05) spawn('potion_hide');
       if (Math.random() < 0.05) spawn('potion_speed');
@@ -114,7 +122,6 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
-// --- Init ---
 setupMobileControls();
 loadAllAssets().then(() => {
   reset();
