@@ -1,5 +1,3 @@
-// script.js
-
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const scoreEl = document.getElementById('score');
@@ -38,7 +36,7 @@ const player = { x: 60, y: 60, size: 32, speed: 2.5, hidden: false, hideUntil: 0
 const enemy  = { x: 520, y: 260, size: 32, speed: 1.8, lastKnown: null };
 
 // Items array - will now store more info
-let items = []; // {x, y, type, sprite}
+let items = []; // {x, y, type, sprite, size}
 
 const FRUIT_TYPES = ['fruit_apple', 'fruit_grapes', 'fruit_orange', 'fruit_watermelon'];
 const POTION_TYPES = ['potion_hide', 'potion_speed'];
@@ -62,7 +60,8 @@ function spawn(type) {
     x: Math.random() * (canvas.width - 40) + 20,
     y: Math.random() * (canvas.height - 40) + 20,
     type: type, // 'fruit', 'potion_hide', 'potion_speed'
-    sprite: sprites[spriteName]
+    sprite: sprites[spriteName],
+    size: 32 // <-- ADDED: Gives items a consistent size
   });
 }
 
@@ -199,8 +198,8 @@ function render() {
 
   // Items
   for (const it of items) {
-    // Draw centered on its x/y
-    ctx.drawImage(it.sprite, it.x - it.sprite.width / 2, it.y - it.sprite.height / 2);
+    // UPDATED: Draw with the consistent size property
+    ctx.drawImage(it.sprite, it.x - it.size / 2, it.y - it.size / 2, it.size, it.size);
   }
 
   // Player
