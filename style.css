@@ -1,3 +1,5 @@
+/* style.css */
+
 body {
   margin: 0;
   display: flex;
@@ -7,20 +9,38 @@ body {
   background: #111;
   color: #eee;
   font-family: Arial, sans-serif;
+  overflow: hidden; /* Prevent scrolling */
+}
+
+#game-container {
+  position: relative;
+  width: 100vw;
+  height: calc(100vw * 9 / 16);
+  max-height: 100vh;
+  max-width: calc(100vh * 16 / 9);
+  margin: auto;
 }
 
 #game {
   background: #223;
   border: 4px solid #000;
   cursor: pointer;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  /* ADD THIS LINE to prevent blurry sprites */
+  image-rendering: pixelated; 
 }
 
 #hud {
-  position: fixed;
+  position: absolute;
   left: 12px;
   top: 12px;
   color: #fff;
   font-weight: 700;
+  z-index: 10;
+  font-size: clamp(14px, 3vmin, 20px);
+  text-shadow: 1px 1px 2px black;
 }
 
 #hint {
@@ -29,4 +49,48 @@ body {
   top: 12px;
   color: #ffeb99;
   font-weight: 600;
+}
+
+#dpad {
+  display: none;
+  position: fixed;
+  bottom: 25px;
+  left: 25px;
+  width: 120px;
+  height: 120px;
+  display: grid;
+  grid-template-areas:
+    ". up ."
+    "left . right"
+    ". down .";
+  opacity: 0.6;
+  z-index: 20;
+}
+
+#dpad button {
+  background-color: rgba(200, 200, 200, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  color: white;
+  font-size: 24px;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#dpad button.active,
+#dpad button:active {
+  background-color: rgba(255, 255, 255, 0.7);
+  transform: scale(0.95);
+}
+
+#dpad-up { grid-area: up; }
+#dpad-down { grid-area: down; }
+#dpad-left { grid-area: left; }
+#dpad-right { grid-area: right; }
+
+@media (hover: none) and (pointer: coarse), (max-width: 768px) {
+  #dpad {
+    display: grid;
+  }
 }

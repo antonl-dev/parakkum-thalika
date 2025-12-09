@@ -1,17 +1,47 @@
+// script.js
+
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const hiddenEl = document.getElementById('hidden');
 
+// --- START: Image Loading ---
+const sprites = {};
+const assetsToLoad = [
+  { name: 'player', src: 'img/player.png' },
+  { name: 'enemy', src: 'img/enemy.png' },
+  { name: 'fruit_apple', src: 'img/fruit_apple.png' },
+  { name: 'fruit_grapes', src: 'img/fruit_grapes.png' },
+  { name: 'fruit_orange', src: 'img/fruit_orange.png' },
+  { name: 'fruit_watermelon', src: 'img/fruit_watermelon.png' },
+  { name: 'potion_hide', src: 'img/potion_hide.png' },
+  { name: 'potion_speed', src: 'img/potion_speed.png' },
+];
+
+function loadSprite(asset) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = asset.src;
+    img.onload = () => {
+      sprites[asset.name] = img;
+      resolve();
+    };
+  });
+}
+// --- END: Image Loading ---
+
 let score = 0;
 let gameOver = false;
 
-// Player and enemy objects
-const player = { x: 60, y: 60, size: 20, speed: 2.5, hidden: false, hideUntil: 0 };
-const enemy  = { x: 520, y: 260, size: 22, speed: 1.8, lastKnown: null };
+// Player and enemy objects - adjusted size for sprites
+const player = { x: 60, y: 60, size: 32, speed: 2.5, hidden: false, hideUntil: 0, spedUpUntil: 0 };
+const enemy  = { x: 520, y: 260, size: 32, speed: 1.8, lastKnown: null };
 
-// Items array
-let items = []; // {x,y,type} type: 'fruit'|'potion'
+// Items array - will now store more info
+let items = []; // {x, y, type, sprite}
+
+const FRUIT_TYPES = ['fruit_apple', 'fruit_grapes', 'fruit_orange', 'fruit_watermelon'];
+const POTION_TYPES = ['potion_hide', 'potion_speed'];
 
 // Simple input handling
 const keys = {};
@@ -23,10 +53,16 @@ canvas.addEventListener('click', () => canvas.focus());
 
 // Spawn an item of a given type
 function spawn(type) {
+  let spriteName = type;
+  if (type === 'fruit') {
+    spriteName = FRUIT_TYPES[Math.floor(Math.random() * FRUIT_TYPES.length)];
+  }
+
   items.push({
     x: Math.random() * (canvas.width - 40) + 20,
     y: Math.random() * (canvas.height - 40) + 20,
-    type
+    type: type, // 'fruit', 'potion_hide', 'potion_speed'
+    sprite: sprites[spriteName]
   });
 }
 
@@ -38,11 +74,13 @@ function reset() {
   player.y = 60;
   player.hidden = false;
   player.hideUntil = 0;
+  player.spedUpUntil = 0;
   enemy.x = 520;
   enemy.y = 260;
   items = [];
   for (let i = 0; i < 5; i++) spawn('fruit');
-  spawn('potion');
+  spawn('potion_hide');
+  spawn('potion_speed');
   scoreEl.textContent = score;
   hiddenEl.textContent = '';
 }
@@ -65,6 +103,20 @@ function loop() {
 function update() {
   if (gameOver) return;
 
+  // Check if player's hidden status has expired
+  if (player.hidden && Date.now() > player.hideUntil) {
+    player.hidden = false;
+    hiddenEl.textContent = '';
+  }
+
+  // Check if speed boost has expired
+  const baseSpeed = 2.5;
+  if (Date.now() > player.spedUpUntil) {
+    player.speed = baseSpeed;
+  } else {
+    player.speed = baseSpeed * 1.6; // 60% faster
+  }
+
   // Player movement
   let dx = 0, dy = 0;
   if (keys['arrowup'] || keys['w']) dy -= 1;
@@ -83,12 +135,6 @@ function update() {
   // Clamp player position to canvas boundaries
   player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
   player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
-
-  // Check if player's hidden status has expired
-  if (player.hidden && Date.now() > player.hideUntil) {
-    player.hidden = false;
-    hiddenEl.textContent = '';
-  }
 
   // Enemy AI: chases player's last known position
   let targetX, targetY;
@@ -123,20 +169,22 @@ function update() {
   for (let i = items.length - 1; i >= 0; i--) {
     const it = items[i];
     const d = Math.hypot((player.x + player.size / 2) - it.x, (player.y + player.size / 2) - it.y);
-    if (d < 20) {
+    if (d < 25) { // Slightly larger pickup radius
       if (it.type === 'fruit') {
         score += 5;
-      }
-      if (it.type === 'potion') {
+      } else if (it.sprite === sprites.potion_hide) {
         player.hidden = true;
         player.hideUntil = Date.now() + 5000; // Hide for 5 seconds
         hiddenEl.textContent = '(HIDDEN)';
+      } else if (it.sprite === sprites.potion_speed) {
+        player.spedUpUntil = Date.now() + 4000; // Speed boost for 4 seconds
       }
       items.splice(i, 1);
       
       // Respawn items occasionally
       if (Math.random() < 0.8) spawn('fruit');
-      if (Math.random() < 0.05) spawn('potion');
+      if (Math.random() < 0.05) spawn('potion_hide');
+      if (Math.random() < 0.05) spawn('potion_speed');
     }
   }
 
@@ -151,24 +199,20 @@ function render() {
 
   // Items
   for (const it of items) {
-    ctx.beginPath();
-    if (it.type === 'fruit') {
-      ctx.fillStyle = 'orange';
-      ctx.arc(it.x, it.y, 8, 0, Math.PI * 2);
-    } else { // Potion
-      ctx.fillStyle = 'cyan';
-      ctx.arc(it.x, it.y, 9, 0, Math.PI * 2);
-    }
-    ctx.fill();
+    // Draw centered on its x/y
+    ctx.drawImage(it.sprite, it.x - it.sprite.width / 2, it.y - it.sprite.height / 2);
   }
 
   // Player
-  ctx.fillStyle = player.hidden ? 'rgba(0,255,200,0.4)' : 'lime';
-  ctx.fillRect(player.x, player.y, player.size, player.size);
+  ctx.save(); // Save current context state
+  if (player.hidden) {
+    ctx.globalAlpha = 0.5; // Make player transparent if hidden
+  }
+  ctx.drawImage(sprites.player, player.x, player.y, player.size, player.size);
+  ctx.restore(); // Restore context state (removes transparency)
 
   // Enemy
-  ctx.fillStyle = 'red';
-  ctx.fillRect(enemy.x, enemy.y, enemy.size, enemy.size);
+  ctx.drawImage(sprites.enemy, enemy.x, enemy.y, enemy.size, enemy.size);
 
   // Game Over screen
   if (gameOver) {
@@ -185,6 +229,42 @@ function render() {
   }
 }
 
-// Initialize and start the game
-reset();
-requestAnimationFrame(loop);
+// --- Initialize and start the game AFTER images are loaded ---
+Promise.all(assetsToLoad.map(loadSprite)).then(() => {
+    reset();
+    requestAnimationFrame(loop);
+});
+
+
+// --- Mobile controls code remains the same ---
+function setupMobileControls() {
+  const keyMap = [
+    { id: 'dpad-up',    key: 'arrowup' },
+    { id: 'dpad-down',  key: 'arrowdown' },
+    { id: 'dpad-left',  key: 'arrowleft' },
+    { id: 'dpad-right', key: 'arrowright' }
+  ];
+
+  keyMap.forEach(({ id, key }) => {
+    const button = document.getElementById(id);
+    if (!button) return;
+    const press = (e) => {
+      e.preventDefault();
+      keys[key] = true;
+      button.classList.add('active');
+    };
+    const release = (e) => {
+      e.preventDefault();
+      keys[key] = false;
+      button.classList.remove('active');
+    };
+    button.addEventListener('touchstart', press, { passive: false });
+    button.addEventListener('touchend', release, { passive: false });
+    button.addEventListener('touchcancel', release, { passive: false });
+    button.addEventListener('mousedown', press);
+    button.addEventListener('mouseup', release);
+    button.addEventListener('mouseleave', release);
+  });
+}
+
+setupMobileControls();
