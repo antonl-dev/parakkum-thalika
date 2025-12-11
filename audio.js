@@ -4,7 +4,14 @@
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 const actx = new AudioContext();
 
-// This function must be called inside a user interaction (touch/click)
+
+
+
+
+
+
+
+
 export function initAudio() {
   if (actx.state === 'suspended') {
     actx.resume();
