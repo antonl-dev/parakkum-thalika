@@ -1,27 +1,449 @@
 <!doctype html>
-<html lang="en">
+<html>
 <head>
   <meta charset="utf-8" />
-  <title>Robbery Game</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Louvre Escape</title>
+
+  <style>
+    :root{
+      --btn-size: 64px;
+      --btn-gap: 8px;
+    }
+
+    body { 
+        margin:0; 
+        height:100vh; 
+        background:#111; 
+        color:#eee; 
+        font-family:Arial,system-ui; 
+        display:flex; 
+        align-items:center; 
+        justify-content:center; 
+        overflow: hidden; 
+    }
+    
+    #game { 
+        background:#3d251e; /* Parquet floor color */
+        border:4px solid #000; 
+        display:block; 
+        max-width: 100%;
+        max-height: 100%;
+        /* CRITICAL: Makes pixel art look sharp, not blurry */
+        image-rendering: pixelated; 
+    }
+
+    /* HUD */
+    #hud { 
+        position:fixed; left:12px; top:12px; 
+        color:#fff; font-weight:700; font-size:24px; 
+        pointer-events: none; text-shadow: 2px 2px 0 #000; z-index: 10;
+    }
+    #hidden { color:#00ffff; margin-left: 10px; font-weight:800; font-style: italic; }
+
+    /* STORY OVERLAY */
+    #storyOverlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.95);
+      color: white;
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      text-align: center;
+      font-family: Arial, sans-serif;
+      z-index: 100;
+    }
+    #storyOverlay h2 { font-size: 32px; color: #ffd700; margin-bottom: 20px;}
+    #storyOverlay p { margin: 8px 0; font-size: 18px; color: #ccc; }
+    
+    #loadingMsg { color: #888; margin-top: 10px; font-size: 14px; }
+
+    #tapToContinue {
+      margin-top: 30px; padding: 12px 24px;
+      background: #ffd700; color: #000;
+      font-weight: bold; border-radius: 8px;
+      cursor: pointer; font-size: 20px;
+      border: 2px solid #fff;
+      display: none; /* Hidden until images load */
+    }
+    #tapToContinue:active { transform: scale(0.95); }
+
+    /* CONTROLS (DPAD) */
+    #controls {
+      position: fixed; left: 20px; bottom: 20px;
+      width: calc(var(--btn-size) * 3 + var(--btn-gap) * 2);
+      height: calc(var(--btn-size) * 3 + var(--btn-gap) * 2);
+      touch-action: none; user-select: none; z-index: 50;
+    }
+    .dpad {
+      width: 100%; height: 100%;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: var(--btn-gap);
+    }
+    .dp-btn {
+      width: 100%; height: 100%;
+      border-radius: 12px; background: rgba(255,255,255,0.15);
+      color: #fff; display:flex; align-items:center; justify-content:center;
+      font-size:24px; font-weight:800; border: 1px solid rgba(255,255,255,0.2);
+      user-select:none; touch-action:none; cursor: pointer;
+    }
+    .dp-btn:active { background: rgba(255,255,255,0.4); }
+    .invisible { background: transparent; pointer-events:none; border:none;}
+
+    #restartBtn {
+      position: fixed; right: 20px; bottom: 20px;
+      font-size: 20px; padding: 15px 25px;
+      background: #ff4444; color: white;
+      border: 2px solid white; border-radius: 10px;
+      display: none; cursor: pointer; z-index: 60;
+    }
+    #caughtOverlay { 
+        position: fixed; inset: 0; 
+        display:flex; align-items:center; justify-content:center; 
+        pointer-events:none; z-index: 55;
+    }
+    #caughtText { 
+        font-size:80px; color:#fffb00; display:none; 
+        font-family: sans-serif; text-shadow:4px 4px 0 #000; font-weight: 900;
+        transform: rotate(-10deg);
+    }
+  </style>
 </head>
+
 <body>
 
-  <div id="game-container">
-    <div id="hud">Score: <span id="score">0</span> <span id="hidden"></span></div>
-    <canvas id="game" width="640" height="360" tabindex="0"></canvas>
-    
-    <div id="dpad">
-      <button id="dpad-up">▲</button>
-      <button id="dpad-left">◀</button>
-      <button id="dpad-right">▶</button>
-      <button id="dpad-down">▼</button>
+  <div id="hud">
+    Score: <span id="score">0</span><span id="hidden"></span>
+  </div>
+
+  <canvas id="game" width="800" height="500"></canvas>
+
+  <div id="controls">
+    <div class="dpad">
+      <div class="invisible"></div><button class="dp-btn" id="btn-up">▲</button><div class="invisible"></div>
+      <button class="dp-btn" id="btn-left">◀</button><div class="invisible"></div><button class="dp-btn" id="btn-right">▶</button>
+      <div class="invisible"></div><button class="dp-btn" id="btn-down">▼</button><div class="invisible"></div>
     </div>
   </div>
 
-  <!-- NOTE: type="module" is required here, and it points to main.js -->
-  <script type="module" src="main.js"></script>
+  <button id="restartBtn">TRY AGAIN</button>
+  
+  <div id="caughtOverlay">
+      <div id="caughtText">BUSTED!</div>
+  </div>
 
+  <div id="storyOverlay">
+      <h2>LOUVRE HEIST</h2>
+      <p>The guard is on patrol.</p>
+      <p>Steal the <span style="color:orange">Jewels</span>.</p>
+      <p>Use <span style="color:cyan">Gadgets</span> to hide.</p>
+      <p id="loadingMsg">Loading assets...</p>
+      <div id="tapToContinue">START HEIST</div>
+  </div>
+
+<script>
+// --- ASSET LOADER ---
+const sprites = {};
+const assetsToLoad = {
+    // Characters
+    player: 'img/construction_worker.png',
+    enemy: 'img/security_police.png',
+    
+    // Loot
+    loot_diamond: 'img/jewel_diamond.png',
+    loot_crown: 'img/jewel_crown.png',
+    loot_emerald: 'img/jewel_emerald.png',
+    loot_sapphire: 'img/jewel_sapphire.png',
+    
+    // Gadgets
+    gadget_smoke: 'img/smoke_bomb.png',
+    gadget_sprint: 'img/energy_drink.png',
+    
+    // Floor (Optional)
+    floor: 'img/floor_parquet.png'
+};
+
+let imagesLoaded = 0;
+const totalImages = Object.keys(assetsToLoad).length;
+
+function loadAssets() {
+    for (let key in assetsToLoad) {
+        const img = new Image();
+        img.src = assetsToLoad[key];
+        img.onload = () => {
+            sprites[key] = img;
+            checkLoad();
+        };
+        img.onerror = () => {
+            console.warn("Missing image:", assetsToLoad[key]);
+            checkLoad(); // Count it anyway so game doesn't freeze
+        };
+    }
+}
+
+function checkLoad() {
+    imagesLoaded++;
+    if (imagesLoaded >= totalImages) {
+        document.getElementById('loadingMsg').style.display = 'none';
+        document.getElementById('tapToContinue').style.display = 'block';
+    }
+}
+
+// Start Loading Immediately
+loadAssets();
+
+
+// --- GAME STATE ---
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const hiddenEl = document.getElementById('hidden');
+const restartBtn = document.getElementById('restartBtn');
+const caughtText = document.getElementById('caughtText');
+const storyOverlay = document.getElementById("storyOverlay");
+
+let score = 0;
+let gameOver = false;
+let gameRunning = false;
+
+// Configs - Scaled up size for sprites (32x32 is standard pixel art size)
+const player = {
+    x: 100, y: 900, 
+    size: 50, 
+    speed: 4, 
+    hideUntil: 0
+};
+
+const enemy = {
+    x: 600, y: 300, 
+    size: 50, // Guard slightly bigger
+    speed: 2.2
+};
+
+let items = [];
+
+// --- CONTROLS ---
+const keys = { up:false, down:false, left:false, right:false };
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowUp' || e.key === 'w') keys.up = true;
+  if (e.key === 'ArrowDown' || e.key === 's') keys.down = true;
+  if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
+  if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
+  if (e.key === ' ' && !gameRunning && imagesLoaded >= totalImages) startGame();
+});
+
+window.addEventListener('keyup', (e) => {
+  if (e.key === 'ArrowUp' || e.key === 'w') keys.up = false;
+  if (e.key === 'ArrowDown' || e.key === 's') keys.down = false;
+  if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+  if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+});
+
+function bindDpad(id, dir) {
+  const btn = document.getElementById(id);
+  const start = (e) => { e.preventDefault(); keys[dir] = true; btn.style.background='rgba(255,255,255,0.4)'; };
+  const end = (e) => { e.preventDefault(); keys[dir] = false; btn.style.background='rgba(255,255,255,0.15)'; };
+  
+  btn.addEventListener('mousedown', start);
+  btn.addEventListener('mouseup', end);
+  btn.addEventListener('touchstart', start, {passive: false});
+  btn.addEventListener('touchend', end, {passive: false});
+}
+bindDpad('btn-up', 'up');
+bindDpad('btn-down', 'down');
+bindDpad('btn-left', 'left');
+bindDpad('btn-right', 'right');
+
+// --- LOGIC ---
+
+const LOOT_TYPES = ['loot_diamond', 'loot_emerald', 'loot_sapphire', 'loot_crown'];
+const GADGET_TYPES = ['gadget_smoke', 'gadget_sprint'];
+
+function spawnItem(forceType) {
+    let type = forceType;
+    let category = 'loot';
+
+    if (!type) {
+        // 10% Gadget, 90% Loot
+        if (Math.random() > 0.9) {
+            type = GADGET_TYPES[Math.floor(Math.random() * GADGET_TYPES.length)];
+            category = 'gadget';
+        } else {
+            type = LOOT_TYPES[Math.floor(Math.random() * LOOT_TYPES.length)];
+            category = 'loot';
+        }
+    }
+
+    items.push({
+        x: 40 + Math.random() * (canvas.width - 80),
+        y: 40 + Math.random() * (canvas.height - 80),
+        spriteName: type, 
+        category: category,
+        size: 28 // Item size
+    });
+}
+
+function startGame() {
+    storyOverlay.style.display = "none";
+    gameRunning = true;
+    resetGame();
+}
+
+function resetGame() {
+    score = 0;
+    gameOver = false;
+    scoreEl.innerText = "0";
+    hiddenEl.innerText = "";
+    
+    player.x = 50; player.y = 50;
+    player.hideUntil = 0;
+    
+    enemy.x = canvas.width - 50; enemy.y = canvas.height - 50;
+    
+    items = [];
+    for(let i=0; i<8; i++) spawnItem();
+    
+    caughtText.style.display = "none";
+    restartBtn.style.display = "none";
+}
+
+document.getElementById('tapToContinue').addEventListener('click', startGame);
+restartBtn.addEventListener('click', resetGame);
+
+function update() {
+    if (!gameRunning || gameOver) return;
+
+    // 1. Player Movement
+    let dx = 0, dy = 0;
+    if (keys.up) dy = -1;
+    if (keys.down) dy = 1;
+    if (keys.left) dx = -1;
+    if (keys.right) dx = 1;
+
+    if (dx !== 0 || dy !== 0) {
+        const dist = Math.hypot(dx, dy);
+        dx /= dist; dy /= dist;
+        player.x += dx * player.speed;
+        player.y += dy * player.speed;
+    }
+
+    // Bounds
+    player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
+    player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+
+    // 2. Hidden Logic
+    const isHidden = Date.now() < player.hideUntil;
+    hiddenEl.innerText = isHidden ? " (INVISIBLE!)" : "";
+
+    // 3. Enemy AI
+    if (!isHidden) {
+        // Simple chase
+        const angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+        enemy.x += Math.cos(angle) * enemy.speed;
+        enemy.y += Math.sin(angle) * enemy.speed;
+
+        // Collision
+        const distToPlayer = Math.hypot(player.x - enemy.x, player.y - enemy.y);
+        // Collision threshold: roughly half the size of combined sprites
+        if (distToPlayer < (player.size/2 + enemy.size/2)) {
+            gameOver = true;
+            caughtText.style.display = "block";
+            restartBtn.style.display = "block";
+        }
+    }
+
+    // 4. Items
+    for (let i = items.length - 1; i >= 0; i--) {
+        const it = items[i];
+        // Center-to-center distance
+        const centerX = it.x + it.size/2;
+        const centerY = it.y + it.size/2;
+        const pCenterX = player.x + player.size/2;
+        const pCenterY = player.y + player.size/2;
+
+        const dist = Math.hypot(pCenterX - centerX, pCenterY - centerY);
+        
+        if (dist < 30) {
+            if (it.category === "loot") {
+                score += (it.spriteName === 'loot_crown') ? 500 : 100; // Crown worth more
+                scoreEl.innerText = score;
+                spawnItem(); 
+            } else if (it.category === "gadget") {
+                if(it.spriteName === 'gadget_smoke') {
+                    player.hideUntil = Date.now() + 5000;
+                } else {
+                    // Sprint logic could go here
+                    score += 50; 
+                }
+                spawnItem(); 
+            }
+            items.splice(i, 1);
+        }
+    }
+}
+
+function render() {
+    // 1. Background
+    if (sprites.floor) {
+        const pat = ctx.createPattern(sprites.floor, 'repeat');
+        ctx.fillStyle = pat;
+        ctx.fillRect(0,0, canvas.width, canvas.height);
+    } else {
+        ctx.fillStyle = "#3d251e";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // 2. Items
+    items.forEach(it => {
+        const img = sprites[it.spriteName];
+        if (img) {
+            // Draw Image
+            ctx.drawImage(img, it.x, it.y, it.size, it.size);
+        } else {
+            // Fallback Circle
+            ctx.beginPath();
+            ctx.arc(it.x + it.size/2, it.y + it.size/2, it.size/2, 0, Math.PI*2);
+            ctx.fillStyle = (it.category === 'gadget') ? 'cyan' : 'gold';
+            ctx.fill();
+        }
+    });
+
+    // 3. Player
+    const isHidden = Date.now() < player.hideUntil;
+    ctx.save();
+    if (isHidden) ctx.globalAlpha = 0.5; // Semi-transparent
+    
+    if (sprites.player) {
+        ctx.drawImage(sprites.player, player.x, player.y, player.size, player.size);
+    } else {
+        // Fallback
+        ctx.fillStyle = "#44ff44";
+        ctx.fillRect(player.x, player.y, player.size, player.size);
+    }
+    ctx.restore();
+
+    // 4. Enemy
+    if (sprites.enemy) {
+        ctx.drawImage(sprites.enemy, enemy.x, enemy.y, enemy.size, enemy.size);
+    } else {
+        // Fallback
+        ctx.fillStyle = "#ff2222";
+        ctx.beginPath();
+        ctx.arc(enemy.x + enemy.size/2, enemy.y + enemy.size/2, enemy.size/2, 0, Math.PI*2);
+        ctx.fill();
+    }
+}
+
+function loop() {
+    update();
+    render();
+    requestAnimationFrame(loop);
+}
+
+loop();
+
+</script>
 </body>
 </html>
